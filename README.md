@@ -51,7 +51,7 @@ The [Windows 10](#windows-10) installation instructions are still valid for Wind
 
 ## Linux
 
-Linux releases target x86-64 distributions with glibc 2.34 or newer. Download
+Linux releases target x86-64 distributions with glibc 2.35 or newer. Download
 either the AppImage or the AppDir tarball from the Releases page. The AppImage
 includes a CLI dispatcher:
 
