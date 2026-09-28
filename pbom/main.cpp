@@ -387,7 +387,7 @@ namespace pboman3 {
 
             const QFileInfo fi(file);
             if (fi.isFile() && !fi.isSymLink()) {
-                const PboApplication app(argc, argv);
+                const PboApplication<TChr> app(argc, argv);
                 exitCode = RunMainWindow(app, file, util::ApplicationLogLevel::WARN);
             } else {
                 //but still call regular CLI if the input argument we thought
