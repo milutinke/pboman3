@@ -16,11 +16,12 @@ namespace pboman3 {
 
     TEST(CommandLineTest, OpenAllowsAnEmptyFileForDesktopLaunch) {
         CLI::App app;
-        const auto commandLine = CommandLine(&app).build<char>();
+        CommandLine::CommandOpen<char> commandLine;
+        commandLine.configure(&app);
         Parse(app, {"pbom", "open", "--"});
 
-        EXPECT_TRUE(commandLine->open.hasBeenSet());
-        EXPECT_TRUE(commandLine->open.fileName.empty());
+        EXPECT_TRUE(commandLine.hasBeenSet());
+        EXPECT_TRUE(commandLine.fileName.empty());
     }
 
     TEST(CommandLineTest, UsePboPrefixIsFalseWhenFlagIsAbsent) {
