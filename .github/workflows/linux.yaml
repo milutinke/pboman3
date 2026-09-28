@@ -32,7 +32,6 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtwayland
           cache: true
 
       - name: Configure
@@ -58,7 +57,7 @@ jobs:
     container: almalinux:9
     steps:
       - name: Install host tools
-        run: dnf install -y gcc gcc-c++ binutils cmake make git curl file fuse-libs libglvnd-glx libxkbcommon libxkbcommon-x11 xcb-util xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm
+        run: dnf install -y gcc gcc-c++ binutils cmake make git file fuse-libs libglvnd-glx libxkbcommon libxkbcommon-x11 xcb-util xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm
 
       - uses: actions/checkout@v5
         with:
@@ -71,7 +70,6 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtwayland
 
       - name: Configure release
         run: cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr
