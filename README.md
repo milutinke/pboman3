@@ -33,7 +33,7 @@ A tool to open, pack and unpack ArmA PBO files.
 2. Run the `installer`.
 
 #### Manual instllation
-1. Download the `binaries` from the [Releases](https://github.com/winseros/pboman3/releases) section.
+1. Download `PBOManager-Windows-x86_64.zip` from the [Releases](https://github.com/winseros/pboman3/releases) section and extract it. The separately published `.exe` requires the Qt DLLs and plugin directories included in this ZIP.
 2. Run the `pbom.exe`
 3. Optionally, to get the Windows Explorer integration, register the `dll`:
    ```
