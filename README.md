@@ -112,6 +112,47 @@ Also, see [how CI builds](.github/workflows/artifcats.yaml).
 
 On Linux, a typical source build is:
 
+### Linux build and install script
+
+Install the required build tools, a C++20 compiler, Qt 6.8 or newer, and the Qt
+Widgets, Network, xcb, and Wayland development components. GNOME Files context
+menus additionally require the distribution's `nautilus-python` package.
+
+Clone with submodules and run the included installer:
+
+```sh
+git clone --recurse-submodules https://github.com/winseros/pboman3.git
+cd pboman3
+./linux/build-install.sh
+```
+
+The default installation prefix is `$HOME/.local`, so root access is not
+required. The script builds both `pbom` and `pboc`, installs the desktop entry,
+MIME definition, icon, Dolphin service menus, and Nautilus extension, and then
+refreshes the available desktop caches. Ensure `$HOME/.local/bin` is in `PATH`
+and restart Nautilus or Dolphin after installation.
+
+Useful options include:
+
+```sh
+# Rebuild from scratch with eight parallel jobs
+./linux/build-install.sh --clean --jobs 8
+
+# Install system-wide under /usr/local; sudo is used only for installation
+./linux/build-install.sh --system
+
+# Select a different prefix and build directory
+./linux/build-install.sh \
+  --prefix "$HOME/Applications/pboman3" \
+  --build-dir "$PWD/build/custom"
+
+./linux/build-install.sh --help
+```
+
+### Manual Linux build
+
+The equivalent manual build is:
+
 ```sh
 git clone --recurse-submodules https://github.com/winseros/pboman3.git
 cmake -S pboman3 -B pboman3/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
