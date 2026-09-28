@@ -88,9 +88,11 @@ left unchanged.
 
 ## Building from source
 
-PBO Manager requires CMake, a C++20 compiler, and Qt 6.8 or newer. Qt 6.10.1 is
-used for release builds. Linux builds require the Qt Widgets, Network, xcb, and
-Wayland components supplied by the Qt installation.
+PBO Manager requires CMake, a C++20 compiler, and Qt 6.8 or newer. Windows
+release builds use Qt 6.10.1; Linux release builds use Qt 6.8.3 because its
+official binary package includes both native xcb and Wayland platform plugins.
+Linux builds require the Qt Widgets, Network, xcb, and Wayland components
+supplied by the Qt installation.
 
 1. Set the env variables:
 
