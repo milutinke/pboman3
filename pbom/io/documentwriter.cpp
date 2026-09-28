@@ -50,12 +50,12 @@ namespace pboman3::io {
                     "Could not write to the file. Check you have enough permissions and the file is not locked by another process.",
                     path_);
             }
-            if (!QFile::rename(filePath, path_)) {
+            if (!staged.rename(path_)) {
                 LOG(warning, "Could not rename file 1 to file 2 - throwing:", filePath, "|", path_)
                 QFile::rename(backupPath, path_);
                 throw DiskAccessException("Could not rename the file. Normally this must not happen.", filePath);
             }
-        } else if (!QFile::rename(filePath, path_)) {
+        } else if (!staged.rename(path_)) {
             throw DiskAccessException("Could not publish the output file without replacing another file.", path_);
         }
         staged.setAutoRemove(false);

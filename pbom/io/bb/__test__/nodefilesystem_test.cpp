@@ -90,8 +90,8 @@ namespace pboman3::io::test {
         const QString firstPath = fs.composeAbsolutePath(first);
         const QString secondPath = fs.composeAbsolutePath(second);
         ASSERT_NE(firstPath, secondPath);
-        ASSERT_EQ(firstPath, fs.allocatePath(first));
-        ASSERT_EQ(secondPath, fs.allocatePath(second));
+        ASSERT_EQ(QDir::fromNativeSeparators(firstPath), QDir::fromNativeSeparators(fs.allocatePath(first)));
+        ASSERT_EQ(QDir::fromNativeSeparators(secondPath), QDir::fromNativeSeparators(fs.allocatePath(second)));
     }
 
 #ifndef Q_OS_WIN
