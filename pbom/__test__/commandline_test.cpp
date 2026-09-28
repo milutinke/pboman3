@@ -14,6 +14,15 @@ namespace pboman3 {
         }
     }
 
+    TEST(CommandLineTest, OpenAllowsAnEmptyFileForDesktopLaunch) {
+        CLI::App app;
+        const auto commandLine = CommandLine(&app).build<char>();
+        Parse(app, {"pbom", "open", "--"});
+
+        EXPECT_TRUE(commandLine->open.hasBeenSet());
+        EXPECT_TRUE(commandLine->open.fileName.empty());
+    }
+
     TEST(CommandLineTest, UsePboPrefixIsFalseWhenFlagIsAbsent) {
         QTemporaryDir dir;
         const QString path = dir.filePath("input.pbo");

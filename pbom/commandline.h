@@ -33,7 +33,6 @@ namespace pboman3 {
             void configure(App* cli) override {
                 command = cli->add_subcommand("open", "Open the specified PBO file");
                 command->add_option("file", fileName, "The PBO file to open")
-                       ->required()
                        ->check(ExistingFile);
             }
         };

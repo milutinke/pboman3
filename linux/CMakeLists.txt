@@ -1,7 +1,15 @@
 include(GNUInstallDirs)
 
 set(PBOM_LINUX_EXECUTABLE "${CMAKE_INSTALL_FULL_BINDIR}/pbom")
-set(PBOM_EXECUTABLE "pbom")
+
+# Desktop sessions do not necessarily inherit the shell's PATH, so launchers
+# installed below ~/.local must use the final absolute executable path. Quote
+# and escape it as one Exec token according to the Desktop Entry specification.
+set(PBOM_EXECUTABLE "${PBOM_LINUX_EXECUTABLE}")
+string(REPLACE "\\" "\\\\" PBOM_EXECUTABLE "${PBOM_EXECUTABLE}")
+string(REPLACE "\"" "\\\"" PBOM_EXECUTABLE "${PBOM_EXECUTABLE}")
+string(REPLACE "%" "%%" PBOM_EXECUTABLE "${PBOM_EXECUTABLE}")
+set(PBOM_EXECUTABLE "\"${PBOM_EXECUTABLE}\"")
 
 configure_file(
     share/applications/io.github.winseros.pboman3.desktop.in
@@ -15,6 +23,10 @@ configure_file(
     share/kio/servicemenus/pboman3-folder.desktop.in
     ${CMAKE_CURRENT_BINARY_DIR}/pboman3-folder.desktop
     @ONLY)
+
+# The Python extension needs a Python string literal rather than Desktop Entry
+# quoting. Start again from the unmodified path and escape that representation.
+set(PBOM_EXECUTABLE "${PBOM_LINUX_EXECUTABLE}")
 string(REPLACE "\\" "\\\\" PBOM_EXECUTABLE "${PBOM_LINUX_EXECUTABLE}")
 string(REPLACE "\"" "\\\"" PBOM_EXECUTABLE "${PBOM_EXECUTABLE}")
 configure_file(

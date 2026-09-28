@@ -104,7 +104,8 @@ if(BUILD_TESTING)
     target_compile_definitions(pbom_test PRIVATE
         SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         WINVER=${WIN32_VER}
-        NOMINMAX)
+        NOMINMAX
+        PBOM_GUI)
 
     add_test(NAME pbom_test COMMAND pbom_test)
     set_tests_properties(pbom_test PROPERTIES
