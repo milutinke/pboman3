@@ -12,9 +12,7 @@ namespace pboman3::io {
         nodeFileSystem_ = QSharedPointer<NodeFileSystem>(new NodeFileSystem(folder));
     }
 
-    ExecBackend::~ExecBackend() {
-        folder_.removeRecursively();
-    }
+    ExecBackend::~ExecBackend() = default;
 
     QString ExecBackend::execSync(const PboNode* node, const Cancel& cancel) {
         assert(node->nodeType() == PboNodeType::File && "Can exec only file nodes");

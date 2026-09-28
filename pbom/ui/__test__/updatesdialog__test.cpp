@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "ui/updatesdialog.h"
 #include <QApplication>
+#include <QTemporaryFile>
 
 namespace pboman3::ui::test {
     TEST(SemanticVersionTest, Ctor_Initializes_Without_Params) {
@@ -73,11 +74,17 @@ namespace pboman3::ui::test {
                              ));
 
     TEST(GithubLatestVersionTest, Returns_Valid_Version) {
-        GithubLatestVersion githubVersion;
+        QTemporaryFile response;
+        ASSERT_TRUE(response.open());
+        ASSERT_EQ(response.write("[{\"tag_name\":\"v1.2.3\"}]"), 23);
+        response.close();
 
-        int argc = 0;
-        char argv[1];
-        QApplication app(argc, reinterpret_cast<char**>(argv));
+        GithubLatestVersion githubVersion(QUrl::fromLocalFile(response.fileName()));
+
+        int argc = 1;
+        char appName[] = "pbom_test";
+        char* argv[] = {appName, nullptr};
+        QApplication app(argc, argv);
         QEventLoop loop;
         
         bool successCalled = false;

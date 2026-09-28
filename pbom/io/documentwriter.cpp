@@ -1,6 +1,8 @@
 #include "documentwriter.h"
 #include <QCryptographicHash>
 #include <QTemporaryFile>
+#include <QFileInfo>
+#include <QDir>
 #include "diskaccessexception.h"
 #include "pboheaderentity.h"
 #include "pboheaderio.h"
@@ -18,21 +20,23 @@ namespace pboman3::io {
         assert(document && "Document must not be null");
 
         LOG(info, "Writing the document to:", path_)
-        const bool shouldBackup = QFile::exists(path_);
-        const QString filePath = shouldBackup ? path_ + ".t" : path_;
+        const QFileInfo destination(path_);
+        QTemporaryFile staged(destination.dir().filePath(".pboman3-XXXXXX.tmp"));
+        if (!staged.open())
+            throw DiskAccessException("Could not create a temporary output file.", staged.fileName());
+        const QString filePath = staged.fileName();
+        staged.close();
 
         writeInternal(document, filePath, cancel);
 
         if (cancel()) {
-            if (!shouldBackup)
-                QFile::remove(filePath); //don't assert as not critical
             LOG(info, "Cancel - clean temp files and return")
             return;
         }
 
-        bool backupMade = false;
+        const bool shouldBackup = QFile::exists(path_);
         const QString backupPath = path_ + ".bak";
-        if (shouldBackup && !cancel()) {
+        if (shouldBackup) {
             LOG(info, "Back up the original file as: ", backupPath)
             if (QFile::exists(backupPath) && !QFile::remove(backupPath)) {
                 LOG(warning, "Could not remove the prev backup file - throwing;", backupPath)
@@ -46,16 +50,19 @@ namespace pboman3::io {
                     "Could not write to the file. Check you have enough permissions and the file is not locked by another process.",
                     path_);
             }
-            backupMade = QFile::rename(filePath, path_);
-            if (!backupMade) {
+            if (!QFile::rename(filePath, path_)) {
                 LOG(warning, "Could not rename file 1 to file 2 - throwing:", filePath, "|", path_)
+                QFile::rename(backupPath, path_);
                 throw DiskAccessException("Could not rename the file. Normally this must not happen.", filePath);
             }
+        } else if (!QFile::rename(filePath, path_)) {
+            throw DiskAccessException("Could not publish the output file without replacing another file.", path_);
         }
+        staged.setAutoRemove(false);
 
         if (cancel()) {
             LOG(info, "Cancel - removing the written files")
-            if (backupMade) {
+            if (shouldBackup) {
                 if (!QFile::remove(path_)) {
                     LOG(warning, "Could not remove the file - throwing", path_)
                     throw DiskAccessException("Could not remove the file. Normally this must not happen.", path_);
@@ -66,7 +73,7 @@ namespace pboman3::io {
                     throw DiskAccessException("Could not renames the file. Normally this must not happen.", backupPath);
                 }
             } else {
-                if (!shouldBackup && !QFile::remove(path_)) {
+                if (!QFile::remove(path_)) {
                     LOG(warning, "Could not remove the file - throwing", path_)
                     throw DiskAccessException("Could not remove the file. Normally this must not happen.", path_);
                 }
@@ -222,7 +229,8 @@ namespace pboman3::io {
 
         qint64 read = body->read(data.data(), data.size());
         while (read > 0) {
-            pbo->write(data.data(), read);
+            if (pbo->write(data.data(), read) != read)
+                throw DiskAccessException("Could not write all archive data.", pbo->fileName());
 
             copiedBytes += read;
             emitCopyBytes(copiedBytes, totalBytes);
@@ -261,8 +269,9 @@ namespace pboman3::io {
 
         document->setSignature(sha1.result());
 
-        pbo->write(QByteArray(1, 0));
-        pbo->write(document->signature(), document->signature().count());
+        if (pbo->write(QByteArray(1, 0)) != 1 ||
+            pbo->write(document->signature(), document->signature().size()) != document->signature().size())
+            throw DiskAccessException("Could not write the archive signature.", pbo->fileName());
     }
 
     void DocumentWriter::assignBinarySources(PboNode* node) {

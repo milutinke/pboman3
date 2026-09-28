@@ -59,4 +59,9 @@ namespace pboman3::io::test {
             SanitizedStringTestParam{"123456789a123456789a123456789a123456789a123456789ab",
                                      "123456789a1234-d642eb4f7beba2ee9fda95f3ed39de8~37"}
     ));
+
+    TEST(SanitizedStringTest, ReservedNameSanitization_IsDeterministic) {
+        ASSERT_EQ(static_cast<QString>(SanitizedString("COM1.txt")),
+                  static_cast<QString>(SanitizedString("COM1.txt")));
+    }
 }

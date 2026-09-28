@@ -10,6 +10,8 @@ namespace pboman3::io {
 
         QString resolvePotentialConflicts(const QString& filePath) const;
 
+        FileConflictResolutionMode::Enum mode() const;
+
     private:
         FileConflictResolutionMode::Enum conflictResolutionMode_;
 

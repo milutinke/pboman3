@@ -27,6 +27,8 @@ namespace pboman3::io {
         QString allocatePath(const QList<const PboNode*>& parents, const PboNode* node) const;
 
         QString composePath(const PboNode* node, const QString& rootPath) const;
+
+        static QString allocateSegment(const PboNode* node);
     };
 
 }

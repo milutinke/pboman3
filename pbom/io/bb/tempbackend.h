@@ -4,6 +4,7 @@
 #include "domain/pbonode.h"
 #include "util/util.h"
 #include <QDir>
+#include <QHash>
 
 namespace pboman3::io {
     using namespace domain;
@@ -21,6 +22,7 @@ namespace pboman3::io {
     private:
         QDir folder_;
         QSharedPointer<NodeFileSystem> nodeFileSystem_;
+        mutable QHash<const PboNode*, QString> publishedPaths_;
 
         QString syncPboFileNode(const PboNode* node, const Cancel& cancel) const;
 

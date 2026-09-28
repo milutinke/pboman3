@@ -14,7 +14,8 @@ namespace pboman3::io {
     }
 
     PboDataStream& PboDataStream::operator<<(const QString& src) {
-        file_->writeCString(src);
+        if (!file_->writeCString(src))
+            throw PboEofException();
         return *this;
     }
 

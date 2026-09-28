@@ -39,7 +39,7 @@ namespace pboman3::io {
     }
 
     int PboNodeEntity::size() const {
-        return static_cast<int>(fileName_.length()) + sizeOfFields;
+        return fileName_.toUtf8().size() + sizeOfFields;
     }
 
     PboPath PboNodeEntity::makePath() const {

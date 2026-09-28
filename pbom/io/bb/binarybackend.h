@@ -4,6 +4,7 @@
 #include "tempbackend.h"
 #include "domain/pbonode.h"
 #include <QDir>
+#include <QLockFile>
 
 namespace pboman3::io {
     using namespace domain;
@@ -27,5 +28,9 @@ namespace pboman3::io {
         QSharedPointer<TempBackend> tempBackend_;
         QSharedPointer<ExecBackend> execBackend_;
         QString tempPath_;
+        QString sessionPath_;
+        QSharedPointer<QLockFile> sessionLock_;
+
+        static void cleanupExpiredSessions(const QDir& root);
     };
 }

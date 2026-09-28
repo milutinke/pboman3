@@ -1,5 +1,7 @@
 #include "unpackbackend.h"
 #include <QDir>
+#include <QFileInfo>
+#include <QTemporaryFile>
 #include "io/diskaccessexception.h"
 #include "exception.h"
 #include "util/log.h"
@@ -56,19 +58,58 @@ namespace pboman3::io {
         if (cancel())
             return;
 
-        QFile file(filePath); //WriteOnly won't work for LZH unpacking
-        if (!file.open(QIODeviceBase::ReadWrite)) {
-            LOG(critical, "Can not access the file:", file.fileName())
-            throw DiskAccessException(
-                "Can not open the file. Check you have enough permissions and the file is not locked by another process.",
-                file.fileName());
+        writeFileAtomically(filePath, childNode, cancel, true);
+    }
+
+    bool UnpackBackend::writeFileAtomically(const QString& filePath, const PboNode* childNode,
+                                            const Cancel& cancel, const bool overwrite) const {
+        const QFileInfo destination(filePath);
+        QTemporaryFile staged(destination.dir().filePath(".pboman3-XXXXXX.tmp"));
+        staged.setAutoRemove(true);
+        if (!staged.open()) {
+            throw DiskAccessException("Can not create a temporary output file.", filePath);
         }
 
-        LOG(info, "Writing to file system")
-        const auto bsClose = qScopeGuard([&childNode] { if (childNode->binarySource->isOpen()) childNode->binarySource->close(); });
+        LOG(info, "Writing staged output", staged.fileName())
+        const auto bsClose = qScopeGuard([&childNode] {
+            if (childNode->binarySource->isOpen())
+                childNode->binarySource->close();
+        });
         childNode->binarySource->open();
-        childNode->binarySource->writeToFs(&file, cancel);
+        childNode->binarySource->writeToFs(&staged, cancel);
 
-        file.close();
+        if (cancel())
+            return false;
+        if (!staged.flush())
+            throw DiskAccessException("Could not flush the temporary output file.", filePath);
+        staged.close();
+
+        if (!overwrite || !QFileInfo::exists(filePath)) {
+            if (!staged.rename(filePath))
+                throw DiskAccessException("Could not publish the extracted file.", filePath);
+            staged.setAutoRemove(false);
+            return true;
+        }
+
+        QTemporaryFile backup(destination.dir().filePath(".pboman3-XXXXXX.bak"));
+        backup.setAutoRemove(false);
+        if (!backup.open())
+            throw DiskAccessException("Could not reserve a backup file.", filePath);
+        const QString backupPath = backup.fileName();
+        backup.close();
+        if (!backup.remove())
+            throw DiskAccessException("Could not prepare the backup file.", filePath);
+
+        if (!QFile::rename(filePath, backupPath))
+            throw DiskAccessException("Could not preserve the existing file.", filePath);
+
+        if (!staged.rename(filePath)) {
+            QFile::rename(backupPath, filePath);
+            throw DiskAccessException("Could not publish the extracted file.", filePath);
+        }
+        staged.setAutoRemove(false);
+        if (!QFile::remove(backupPath))
+            LOG(warning, "Could not remove extraction backup", backupPath)
+        return true;
     }
 }

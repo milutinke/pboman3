@@ -23,8 +23,9 @@ namespace pboman3::io {
             const auto initialPos = pos();
             if (len) {
                 QByteArray bytes(len, Qt::Initialization::Uninitialized);
-                read(bytes.data(), len);
-                value.append(bytes);
+                if (read(bytes.data(), len) != len)
+                    return 0;
+                value = QString::fromUtf8(bytes);
             }
             seek(pos() + 1);
             return static_cast<int>(pos() - initialPos);
@@ -33,9 +34,12 @@ namespace pboman3::io {
     }
 
     int PboFile::writeCString(const QString& value) {
-        write(value.toUtf8());
+        const QByteArray bytes = value.toUtf8();
+        if (write(bytes) != bytes.size())
+            return 0;
         constexpr char zero = 0;
-        write(&zero, sizeof zero);
-        return static_cast<int>(value.length() + sizeof zero);
+        if (write(&zero, sizeof zero) != sizeof zero)
+            return 0;
+        return static_cast<int>(bytes.size() + sizeof zero);
     }
 }

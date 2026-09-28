@@ -26,10 +26,9 @@ namespace pboman3::io {
                                            const Cancel& cancel) const {
         LOG(debug, "Unpack the node", childNode->title())
 
-        QString filePath;
+        QString basePath;
         try {
-            filePath = nodeFileSystem_->allocatePath(rootNode, childNode);
-            filePath = conflictResolutionPolicy_->resolvePotentialConflicts(filePath);
+            basePath = nodeFileSystem_->allocatePath(rootNode, childNode);
         } catch (const DiskAccessException& ex) {
             LOG(warning, ex)
             //remove the "." symbol from the end
@@ -41,21 +40,27 @@ namespace pboman3::io {
         if (cancel())
             return;
 
-        QFile file(filePath);
-        if (!file.open(QIODeviceBase::ReadWrite)) {
-            //WriteOnly won't work for LZH unpacking
-            LOG(warning, "Can not access the file:", file.fileName())
-            error("Can could not write to the file | " + file.fileName());
-            progress();
-            return;
+        QString filePath;
+        while (!cancel()) {
+            try {
+                filePath = conflictResolutionPolicy_->resolvePotentialConflicts(basePath);
+                const bool overwrite = conflictResolutionPolicy_->mode() == FileConflictResolutionMode::Enum::Overwrite;
+                writeFileAtomically(filePath, childNode, cancel, overwrite);
+                break;
+            } catch (const DiskAccessException& ex) {
+                const bool retryCopy = conflictResolutionPolicy_->mode() == FileConflictResolutionMode::Enum::Copy
+                    && QFileInfo::exists(filePath);
+                if (retryCopy)
+                    continue;
+                LOG(warning, ex.message())
+                error(ex.message() + " | " + filePath);
+                break;
+            } catch (const AppException& ex) {
+                LOG(warning, ex.message())
+                error(ex.message() + " | " + filePath);
+                break;
+            }
         }
-
-        LOG(debug, "Writing to file system")
-        const auto bsClose = qScopeGuard([&childNode] { if (childNode->binarySource->isOpen()) childNode->binarySource->close(); });
-        childNode->binarySource->open();
-        childNode->binarySource->writeToFs(&file, cancel);
-
-        file.close();
 
         progress();
     }

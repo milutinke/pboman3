@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QUrl>
 #include "io/diskaccessexception.h"
+#include "util/filenames.h"
 
 namespace pboman3::io {
     using namespace domain;
@@ -13,9 +14,7 @@ namespace pboman3::io {
         nodeFileSystem_ = QSharedPointer<NodeFileSystem>(new NodeFileSystem(folder));
     }
 
-    TempBackend::~TempBackend() {
-        folder_.removeRecursively();
-    }
+    TempBackend::~TempBackend() = default;
 
     QList<QUrl> TempBackend::hddSync(const QList<PboNode*>& nodes, const Cancel& cancel) const {
         QList<QUrl> result;
@@ -30,23 +29,20 @@ namespace pboman3::io {
 
 
     void TempBackend::clear(const PboNode* node) const {
-        const QString path = nodeFileSystem_->composeAbsolutePath(node);
-        if (QFileInfo(path).exists()) {
-            if (node->nodeType() == PboNodeType::File && !QFile::remove(path)) {
-                throw DiskAccessException(
-                    "Could not remove the file. Check you have enough permissions and the file is not locked by another process.",
-                    path);
-            }
-            if (node->nodeType() == PboNodeType::Folder && !QDir(path).removeRecursively()) {
-                throw DiskAccessException(
-                    "Could not remove the directory. Check you have enough permissions and the file is not locked by another process.",
-                    path);
-            }
-        }
+        publishedPaths_.remove(node);
+        for (const PboNode* child : *node)
+            clear(child);
     }
 
     QString TempBackend::syncPboFileNode(const PboNode* node, const Cancel& cancel) const {
+        if (publishedPaths_.contains(node) && QFileInfo::exists(publishedPaths_.value(node)))
+            return publishedPaths_.value(node);
+
         QString fsPath = nodeFileSystem_->allocatePath(node);
+
+        const QString basePath = fsPath;
+        for (int copy = 1; QFileInfo::exists(fsPath); ++copy)
+            fsPath = util::FileNames::getCopyFileName(basePath, copy);
 
         if (const QFileInfo fi(fsPath); !fi.exists()) {
             QFile file(fsPath);
@@ -63,6 +59,8 @@ namespace pboman3::io {
 
             if (cancel())
                 file.remove();
+            else
+                publishedPaths_.insert(node, fsPath);
         }
 
         return fsPath;

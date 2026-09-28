@@ -55,15 +55,20 @@ namespace pboman3::ui {
     }
 
 
+    GithubLatestVersion::GithubLatestVersion(QUrl releasesUrl)
+        : releasesUrl_(std::move(releasesUrl)) {
+    }
+
     void GithubLatestVersion::check() {
-        QNetworkRequest request(QUrl(PBOM_API_SITE"/releases?per-page=1"));
+        QNetworkRequest request(releasesUrl_);
         request.setRawHeader("Accept", "application/vnd.github.v3+json");
         reply_.reset(network_.get(request));
         connect(reply_.get(), &QNetworkReply::finished, this, &GithubLatestVersion::replyReceived);
     }
 
     void GithubLatestVersion::abort() const {
-        reply_->abort();
+        if (reply_)
+            reply_->abort();
     }
 
 #define MSG_UNEXPECTED_RESPONSE "The server returned unexpected response."

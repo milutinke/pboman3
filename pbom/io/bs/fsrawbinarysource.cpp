@@ -1,5 +1,6 @@
 #include "fsrawbinarysource.h"
 #include <QFileInfo>
+#include "io/diskaccessexception.h"
 
 namespace pboman3::io {
     FsRawBinarySource::FsRawBinarySource(QString path, qsizetype bufferSize)
@@ -27,7 +28,10 @@ namespace pboman3::io {
         while (!cancel() && remaining > 0) {
             const qsizetype willRead = remaining > buf.size() ? buf.size() : remaining;
             const qint64 hasRead = file_->read(buf.data(), willRead);
-            targetFile->write(buf.data(), hasRead);
+            if (hasRead <= 0)
+                throw DiskAccessException("Could not read from the source file.", file_->fileName());
+            if (targetFile->write(buf.data(), hasRead) != hasRead)
+                throw DiskAccessException("Could not write all data to the destination file.", targetFile->fileName());
             remaining -= hasRead;
         }
     }

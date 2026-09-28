@@ -6,7 +6,7 @@ A tool to open, pack and unpack ArmA PBO files.
  - Can pack/unpack PBO files.
  - Can preview files inside a PBO.
  - Can open mangled (by Mikero's tools) PBO.
- - Integrates with Windows Explorer / immersive menu.
+ - Integrates with Windows Explorer / immersive menu, GNOME Files, and KDE Dolphin.
  - Supports PBO metadata provisioning through [pbo.json](doc/pbo_json.md) or [\$PBOPREFIX\$](doc/prefix_files.md) files.
 
 ## Screenshots
@@ -49,14 +49,54 @@ A tool to open, pack and unpack ArmA PBO files.
 
 The [Windows 10](#windows-10) installation instructions are still valid for Windows 11, although the MSIX package is the suggested method of installation. The Windows 11 immersive menu integration won't function otherwise. :pushpin:
 
+## Linux
+
+Linux releases target x86-64 distributions with glibc 2.34 or newer. Download
+either the AppImage or the AppDir tarball from the Releases page. The AppImage
+includes a CLI dispatcher:
+
+```sh
+chmod +x PBOManager-x86_64.AppImage
+./PBOManager-x86_64.AppImage
+./PBOManager-x86_64.AppImage --cli --help
+./PBOManager-x86_64.AppImage --install-integration
+```
+
+The AppDir tarball exposes `usr/bin/pbom` and `usr/bin/pboc`. It is also the
+fallback on systems where AppImage/FUSE mounting is unavailable.
+
+GNOME Files and KDE Dolphin integration can be installed for the current user
+with the AppImage command above. Remove it with `--uninstall-integration`.
+
+For an unpacked AppDir, run its integration helper and pass a stable absolute
+path. Do not pass a path below an AppImage temporary mount:
+
+```sh
+./usr/share/pboman3/integration/install-user.sh \
+  --launcher "$PWD/usr/bin/pbom"
+```
+
+Run `uninstall-user.sh` from the same directory to remove these entries. GNOME
+Files requires the host distribution's `nautilus-python` package and must be
+restarted after an integration change. Other file managers receive the standard
+`application/x-pbo` MIME registration and can use **Open With PBO Manager**.
+
+The dedicated menus appear only for local homogeneous selections. They provide
+**Pack to…**, **Pack beside folder(s)**, **Unpack to…**, and
+**Unpack beside archive(s)**. Remote URLs and mixed file/folder selections are
+left unchanged.
 
 ## Building from source
+
+PBO Manager requires CMake, a C++20 compiler, and Qt 6.8 or newer. Qt 6.10.1 is
+used for release builds. Linux builds require the Qt Widgets, Network, xcb, and
+Wayland components supplied by the Qt installation.
 
 1. Set the env variables:
 
    | Variable | Description                                                       | Example                         |
    |----------|-------------------------------------------------------------------|---------------------------------|
-   | Qt6_ROOT | Where QT is located. Needed for CMAKE to build.                   | G:\Qt\6.3.3\msvc2019_64         |
+   | Qt6_ROOT | Where Qt is located. Needed for CMake to build.                   | G:\Qt\6.10.1\msvc2022_64        |
 
 
 2. Run the script:
@@ -69,6 +109,24 @@ The [Windows 10](#windows-10) installation instructions are still valid for Wind
    ```
 
 Also, see [how CI builds](.github/workflows/artifcats.yaml).
+
+On Linux, a typical source build is:
+
+```sh
+git clone --recurse-submodules https://github.com/winseros/pboman3.git
+cmake -S pboman3 -B pboman3/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+cmake --build pboman3/build
+cmake --install pboman3/build
+```
+
+Native installation places the desktop file, MIME definition, Dolphin service
+menus, and Nautilus extension in standard GNU install directories. Distribution
+packages should refresh their desktop, MIME, and icon caches in package hooks.
+See [Linux integration](linux/README.md) and
+[Linux packaging](packaging/linux/README.md) for portable registration and
+release details. Linux packaging intentionally leaves host graphics drivers and
+the glibc loader outside the bundle.
 
 ## Open in IDE
 

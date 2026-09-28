@@ -13,7 +13,7 @@ namespace pboman3::model::task {
     public:
         PackTask(QString folder, QString outputDir, FileConflictResolutionMode::Enum fileConflictResolutionMode);
 
-        void execute(const Cancel& cancel) override;
+        [[nodiscard]] TaskResult execute(const Cancel& cancel) override;
 
         friend QDebug operator<<(QDebug debug, const PackTask& task);
 

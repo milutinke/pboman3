@@ -1,7 +1,6 @@
 #include "sanitizedstring.h"
 #include "util/filenames.h"
 #include "util/numbers.h"
-#include <QRandomGenerator>
 #include <QCryptographicHash>
 
 namespace pboman3::io {
@@ -128,8 +127,9 @@ namespace pboman3::io {
 
     QString SanitizedString::doKeywordSanitization(const QString& text, const QString& keyword) {
         QString result(text);
-        const qint32 rnd = QRandomGenerator::global()->bounded(1000);
-        result.insert(keyword.length(), "-" + QString::number(rnd));
+        const QByteArray digest = QCryptographicHash::hash(text.toUtf8(), QCryptographicHash::Sha256);
+        const quint16 suffix = (static_cast<quint8>(digest[0]) << 8 | static_cast<quint8>(digest[1])) % 1000;
+        result.insert(keyword.length(), "-" + QString::number(suffix));
         return result;
     }
 

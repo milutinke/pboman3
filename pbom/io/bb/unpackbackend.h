@@ -20,6 +20,9 @@ namespace pboman3::io {
     protected:
         QSharedPointer<NodeFileSystem> nodeFileSystem_;
 
+        bool writeFileAtomically(const QString& filePath, const PboNode* childNode,
+                                 const Cancel& cancel, bool overwrite) const;
+
         virtual void unpackFileNode(const PboNode* rootNode, const PboNode* childNode, const Cancel& cancel) const;
     };
 }

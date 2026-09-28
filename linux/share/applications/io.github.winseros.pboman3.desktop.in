@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PBO Manager
+Comment=Open, pack, and unpack Arma PBO archives
+Icon=io.github.winseros.pboman3
+Exec=@PBOM_EXECUTABLE@ open -- %f
+Terminal=false
+Categories=Utility;Archiving;
+MimeType=application/x-pbo;
+StartupNotify=true
+

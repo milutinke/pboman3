@@ -1,5 +1,7 @@
 #include "io/bb/nodefilesystem.h"
+#include "io/diskaccessexception.h"
 #include "exception.h"
+#include <QFile>
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 
@@ -76,4 +78,32 @@ namespace pboman3::io::test {
 
         ASSERT_EQ(expected, path);
     }
+
+    TEST(NodeFileSystemTest, SanitizerCollisions_AreAllocatedDistinctlyAndStably) {
+        const QTemporaryDir dir;
+        const NodeFileSystem fs(QDir(dir.path()));
+
+        PboNode root("root", PboNodeType::Container, nullptr);
+        const PboNode* first = root.createHierarchy(PboPath("a?.txt"));
+        const PboNode* second = root.createHierarchy(PboPath("a%3f.txt"));
+
+        const QString firstPath = fs.composeAbsolutePath(first);
+        const QString secondPath = fs.composeAbsolutePath(second);
+        ASSERT_NE(firstPath, secondPath);
+        ASSERT_EQ(firstPath, fs.allocatePath(first));
+        ASSERT_EQ(secondPath, fs.allocatePath(second));
+    }
+
+#ifndef Q_OS_WIN
+    TEST(NodeFileSystemTest, AllocatePath_Rejects_SymbolicLink_Directory_Component) {
+        const QTemporaryDir dir;
+        const QTemporaryDir outside;
+        ASSERT_TRUE(QFile::link(outside.path(), dir.filePath("unsafe")));
+        const NodeFileSystem fs(QDir(dir.path()));
+
+        PboNode root("root", PboNodeType::Container, nullptr);
+        const PboNode* file = root.createHierarchy(PboPath("unsafe/file.txt"));
+        ASSERT_THROW(fs.allocatePath(file), DiskAccessException);
+    }
+#endif
 }

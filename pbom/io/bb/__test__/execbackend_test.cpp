@@ -202,7 +202,7 @@ namespace pboman3::io::test {
         ASSERT_NE(sync1, sync2);
     }
 
-    TEST(ExecBackendTest, Dtor_Cleans_Disk_After_Itself) {
+    TEST(ExecBackendTest, Dtor_Retains_Published_File) {
         //dummy files
         QTemporaryFile f1;
         f1.open();
@@ -218,11 +218,10 @@ namespace pboman3::io::test {
         //the object tested
         const QTemporaryDir dir;
         const auto store = new ExecBackend(QDir(dir.path()));
-        store->execSync(e1, []() { return false; });
+        const QString published = store->execSync(e1, []() { return false; });
         delete store;
 
-        //check the result
-        ASSERT_EQ(QDir(dir.path()).entryList().count(), 0);
+        ASSERT_TRUE(QFileInfo::exists(published));
     }
 
     TEST(ExecBackendTest, Clear_Cleans_Up_If_Needed) {

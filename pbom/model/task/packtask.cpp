@@ -17,7 +17,7 @@ namespace pboman3::model::task {
           fileConflictResolutionMode_(fileConflictResolutionMode) {
     }
 
-    void PackTask::execute(const Cancel& cancel) {
+    TaskResult PackTask::execute(const Cancel& cancel) {
         LOG(info, "Folder file: ", folder_)
         LOG(info, "Output dir: ", outputDir_)
 
@@ -25,39 +25,50 @@ namespace pboman3::model::task {
         emit taskThinking(folder.absolutePath());
 
         const FileConflictResolutionPolicy conflictResolutionPolicy(fileConflictResolutionMode_);
+        const QString requestedPboFile = QDir(outputDir_).filePath(folder.dirName()).append(".pbo");
         QString pboFile;
         try {
-            pboFile = conflictResolutionPolicy.resolvePotentialConflicts(
-                QDir(outputDir_).filePath(folder.dirName()).append(".pbo"));
+            pboFile = conflictResolutionPolicy.resolvePotentialConflicts(requestedPboFile);
         } catch (const DiskAccessException& ex) {
             LOG(info, ex.message())
             //remove the "." symbol from the end
-            emit taskMessage("Failure | " + ex.message().left(ex.message().length() - 1) + " | " + ex.file());
-            return;
+            const QString diagnostic = "Failure | " + ex.message().left(ex.message().length() - 1) + " | " + ex.file();
+            emit taskMessage(diagnostic);
+            return TaskResult::failure(diagnostic);
         }
 
         LOG(info, "The pbo file name:", pboFile)
         PboDocument document("root");
-        const qint32 filesCount = collectDir(folder, folder, *document.root(), cancel);
+        qint32 filesCount;
+        try {
+            filesCount = collectDir(folder, folder, *document.root(), cancel);
+        } catch (const DiskAccessException& ex) {
+            const QString diagnostic = "Failure | " + ex.message() + " | " + ex.file();
+            emit taskMessage(diagnostic);
+            return TaskResult::failure(diagnostic);
+        }
 
         if (cancel())
-            return;
+            return TaskResult::cancelled();
 
         if (filesCount == 0) {
             LOG(info, "The Folder was empty")
-            emit taskMessage("Failure | The folder is empty | " + folder.absolutePath());
-            return;
+            const QString diagnostic = "Failure | The folder is empty | " + folder.absolutePath();
+            emit taskMessage(diagnostic);
+            return TaskResult::failure(diagnostic);
         }
 
         try {
             const task::PackConfiguration packConfiguration(&document);
             packConfiguration.apply();
         } catch (const JsonStructureException& ex) {
-            emit taskMessage("Failure | pbo.json malformed | " + ex.message());
-            return;
+            const QString diagnostic = "Failure | pbo.json malformed | " + ex.message();
+            emit taskMessage(diagnostic);
+            return TaskResult::failure(diagnostic);
         } catch (const task::PrefixEncodingException& ex) {
-            emit taskMessage("Failure | " + ex.message() + " | The file has unsupported encoding");
-            return;
+            const QString diagnostic = "Failure | " + ex.message() + " | The file has unsupported encoding";
+            emit taskMessage(diagnostic);
+            return TaskResult::failure(diagnostic);
         }
 
         DocumentWriter writer(pboFile);
@@ -102,11 +113,20 @@ namespace pboman3::model::task {
 
         try {
             writer.write(&document, cancel);
+            if (cancel())
+                return TaskResult::cancelled();
             LOG(info, "Pack complete")
         } catch (const DiskAccessException& ex) {
             LOG(warning, "Task failed with exception:", ex)
-            emit taskMessage("Failure | " + ex.message() + " | " + ex.file());
+            const QString diagnostic = "Failure | " + ex.message() + " | " + ex.file();
+            emit taskMessage(diagnostic);
+            return TaskResult::failure(diagnostic);
         }
+
+        TaskResult result = TaskResult::success();
+        if (pboFile != requestedPboFile)
+            result.renames.append({requestedPboFile, pboFile});
+        return result;
     }
 
     QDebug operator<<(QDebug debug, const PackTask& task) {
@@ -116,6 +136,10 @@ namespace pboman3::model::task {
     qint32 PackTask::collectDir(const QDir& dirEntry, const QDir& rootDir, PboNode& rootNode,
                                 const Cancel& cancel) const {
         LOG(debug, "Collecting the dir:", dirEntry)
+
+        const QFileInfo directoryInfo(dirEntry.absolutePath());
+        if (!directoryInfo.isReadable())
+            throw DiskAccessException("Could not read the source directory.", dirEntry.absolutePath());
 
         qint32 count = 0;
 
@@ -138,6 +162,10 @@ namespace pboman3::model::task {
         LOG(debug, "Collecting the file:", fileEntry)
 
         if (!fileEntry.isShortcut() && !fileEntry.isSymbolicLink()) {
+#ifndef Q_OS_WIN
+            if (fileEntry.fileName().contains('\\'))
+                throw DiskAccessException("A source file name contains an archive path separator.", fileEntry.filePath());
+#endif
             QString fsPath = fileEntry.canonicalFilePath();
 
             const QString pboPath = rootDir.relativeFilePath(fileEntry.canonicalFilePath());

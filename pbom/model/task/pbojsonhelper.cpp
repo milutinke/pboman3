@@ -5,6 +5,7 @@
 #include "io/fileconflictresolutionpolicy.h"
 #include "model/binarysourceutils.h"
 #include "util/filenames.h"
+#include <QSaveFile>
 
 namespace pboman3::model::task {
     PboJson PboJsonHelper::extractFrom(const PboDocument& document) {
@@ -35,12 +36,12 @@ namespace pboman3::model::task {
         const QJsonObject json = options.makeJson();
         const QByteArray bytes = QJsonDocument(json).toJson(QJsonDocument::Indented);
 
-        QFile file(fileName);
+        QSaveFile file(fileName);
         if (!file.open(QIODeviceBase::WriteOnly)) {
             throw DiskAccessException("Can not access the file. Check if it is used by other processes.", fileName);
         }
-        file.write(bytes);
-        file.close();
+        if (file.write(bytes) != bytes.size() || !file.commit())
+            throw DiskAccessException("Could not write the complete PBO configuration.", fileName);
     }
 
     void PboJsonHelper::extractHeaders(const PboDocument& document, PboJson& options) {

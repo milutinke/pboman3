@@ -8,10 +8,10 @@ namespace pboman3::io {
         int format;
         uint crc;
         QByteArray buffer;
-        QFileDevice* source;
+        QIODevice* source;
         QFileDevice* target;
 
-        DecompressionContext(QFileDevice* pSource, QFileDevice* pTarget);
+        DecompressionContext(QIODevice* pSource, QFileDevice* pTarget);
 
         void write(char data);
 

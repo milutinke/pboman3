@@ -2,6 +2,8 @@
 #include "sanitizedstring.h"
 #include "io/diskaccessexception.h"
 #include "util/log.h"
+#include <QCryptographicHash>
+#include <QFileInfo>
 
 #define LOG(...) LOGGER("io/bb/NodeFileSystem", __VA_ARGS__)
 
@@ -11,6 +13,9 @@ namespace pboman3::io {
     NodeFileSystem::NodeFileSystem(const QDir& folder)
         : QObject(),
           folder_(folder) {
+        const QFileInfo root(folder.absolutePath());
+        if (root.isSymLink() || !root.isDir())
+            throw DiskAccessException("The output folder must be a real directory.", folder.absolutePath());
     }
 
     QString NodeFileSystem::allocatePath(const PboNode* node) const {
@@ -69,14 +74,20 @@ namespace pboman3::io {
     QString NodeFileSystem::allocatePath(const QList<const PboNode*>& parents, const PboNode* node) const {
         QDir local(folder_);
         for (const PboNode* par : parents) {
-            SanitizedString title(par->title());
-            if (!QDir(local.filePath(title)).exists() && !local.mkdir(title))
-                throw DiskAccessException("Could not create the folder.", local.filePath(title));
+            const QString title = allocateSegment(par);
+            const QString candidate = local.filePath(title);
+            const QFileInfo info(candidate);
+            if (info.isSymLink() || (info.exists() && !info.isDir()))
+                throw DiskAccessException("The output path contains an unsafe directory component.", candidate);
+            if (!info.exists() && !local.mkdir(title))
+                throw DiskAccessException("Could not create the folder.", candidate);
             local.cd(title);
         }
 
-        SanitizedString title(node->title());
-        return local.filePath(title);
+        const QString path = local.filePath(allocateSegment(node));
+        if (QFileInfo(path).isSymLink())
+            throw DiskAccessException("The output path points to a symbolic link.", path);
+        return path;
     }
 
     QString NodeFileSystem::composePath(const PboNode* node, const QString& rootPath) const {
@@ -86,14 +97,34 @@ namespace pboman3::io {
 
         QDir local(folder_);
         for (const PboNode* par : parents) {
-            SanitizedString title(par->title());
+            const QString title = allocateSegment(par);
             fs.append(title).append(QDir::separator());
             local.cd(title);
         }
 
-        SanitizedString title(node->title());
+        const QString title = allocateSegment(node);
         fs.append(title);
 
         return fs;
+    }
+
+    QString NodeFileSystem::allocateSegment(const PboNode* node) {
+        const QString title = node->title();
+        const QString base = SanitizedString(title);
+        const PboNode* parent = node->parentNode();
+        if (!parent)
+            return base;
+
+        int collisions = 0;
+        for (const PboNode* sibling : *parent) {
+            const QString siblingBase = SanitizedString(sibling->title());
+            if (QString::compare(base, siblingBase, Qt::CaseInsensitive) == 0)
+                ++collisions;
+        }
+        if (collisions < 2)
+            return base;
+
+        const QByteArray digest = QCryptographicHash::hash(title.toUtf8(), QCryptographicHash::Sha256).toHex().left(8);
+        return base + "-" + QString::fromLatin1(digest);
     }
 }

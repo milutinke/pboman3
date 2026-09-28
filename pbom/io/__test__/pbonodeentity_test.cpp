@@ -39,8 +39,8 @@ namespace pboman3::io::test {
                              testing::Values(PboPackingMethod::Packed, PboPackingMethod::Uncompressed));
 
     TEST(PboNodeEntityTest, Size_Functional) {
-        const PboNodeEntity entry("some-file", PboPackingMethod::Packed, 1, 2, 3, 4);
-        ASSERT_EQ(entry.size(), entry.fileName().size() + 21);
+        const PboNodeEntity entry(QString::fromUtf8("some-файл"), PboPackingMethod::Packed, 1, 2, 3, 4);
+        ASSERT_EQ(entry.size(), entry.fileName().toUtf8().size() + 21);
     }
 
     TEST(PboNodeEntityTest, IsCompressed_Functional) {

@@ -53,7 +53,7 @@ namespace pboman3::io::test {
         c2.close();
     }
 
-    TEST(TempBackendTest, Dtor_Cleans_Disk_After_Itself) {
+    TEST(TempBackendTest, Dtor_Retains_Published_Files) {
         //dummy files
         QTemporaryFile f1;
         f1.open();
@@ -78,10 +78,10 @@ namespace pboman3::io::test {
         const auto be = new TempBackend(QDir(dir.path()));
         be->hddSync(QList({e1, e2, root.at(0)}), []() { return false; });
 
-        //must clean up
         delete be;
 
-        ASSERT_EQ(QDir(dir.path()).entryList().count(), 0);
+        ASSERT_TRUE(QFileInfo::exists(dir.filePath("file1.txt")));
+        ASSERT_TRUE(QFileInfo::exists(dir.filePath("folder1/file2.txt")));
     }
 
     TEST(TempBackendTest, Clear_Cleans_Up_File) {
@@ -106,7 +106,9 @@ namespace pboman3::io::test {
         be.clear(e1);
 
         //check
-        ASSERT_FALSE(QFile::exists(sync.at(0).toLocalFile()));
+        ASSERT_TRUE(QFile::exists(sync.at(0).toLocalFile()));
+        const QList<QUrl> republished = be.hddSync(QList({e1}), []() { return false; });
+        ASSERT_NE(republished.at(0).toLocalFile(), sync.at(0).toLocalFile());
     }
 
     TEST(TempBackendTest, Clear_Cleans_Up_Folder) {
@@ -132,7 +134,7 @@ namespace pboman3::io::test {
         be.clear(fl1);
 
         //check
-        ASSERT_FALSE(QFile::exists(sync.at(0).toLocalFile()));
+        ASSERT_TRUE(QFile::exists(sync.at(0).toLocalFile()));
     }
 
     TEST(TempBackendTest, Clear_Does_Not_Clean_Up) {

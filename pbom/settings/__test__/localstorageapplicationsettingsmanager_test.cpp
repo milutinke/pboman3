@@ -1,20 +1,19 @@
 #include <gtest/gtest.h>
+#include <QTemporaryDir>
 #include "../localstorageapplicationsettingsmanager.h"
 
 namespace pboman3::settings::test {
     class LocalStorageApplicationSettingsManagerTest : public ::testing::Test {
     protected:
-        void SetUp() override {
-            LocalStorageApplicationSettingsManager::purge();
+        QString settingsPath() const {
+            return dir.filePath("settings.ini");
         }
 
-        void TearDown() override {
-            LocalStorageApplicationSettingsManager::purge();
-        }
+        QTemporaryDir dir;
     };
 
     TEST_F(LocalStorageApplicationSettingsManagerTest, ReadSettings_Reads_Values) {
-        LocalStorageApplicationSettingsManager facility;
+        LocalStorageApplicationSettingsManager facility(settingsPath());
 
         constexpr ApplicationSettings savedSettings{
             io::FileConflictResolutionMode::Enum::Copy,
@@ -31,7 +30,7 @@ namespace pboman3::settings::test {
     }
 
     TEST_F(LocalStorageApplicationSettingsManagerTest, ReadSettings_Reads_Defaults) {
-        const LocalStorageApplicationSettingsManager facility;
+        const LocalStorageApplicationSettingsManager facility(settingsPath());
 
         const auto readSettings = facility.readSettings();
 

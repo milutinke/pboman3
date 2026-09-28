@@ -1,18 +1,21 @@
 #include "lzh.h"
 #include "compressionchunk.h"
 #include "lzhdecompressionexception.h"
+#include "io/diskaccessexception.h"
 #include "util/log.h"
+#include <QtEndian>
 
 #define LOG(...) LOGGER("io/lzh/Lzh", __VA_ARGS__)
 
 namespace pboman3::io {
-    void Lzh::decompress(QFileDevice* source, QFileDevice* target, int outputLength, const Cancel& cancel) {
+    void Lzh::decompress(QIODevice* source, QFileDevice* target, int outputLength, const Cancel& cancel) {
         DecompressionContext ctx(source, target);
         const qint64 maxTargetOffset = target->pos() + outputLength;
         const qint64 maxSourceOffset = source->size() - 2;
         while (target->pos() < maxTargetOffset && !source->atEnd() && !cancel()) {
             char format;
-            source->read(&format, sizeof format);
+            if (source->read(&format, sizeof format) != sizeof format)
+                throw LzhDecompressionException("Compressed input is truncated");
             for (char i = 0; i < 8 && target->pos() < maxTargetOffset && source->pos() < maxSourceOffset; i++) {
                 ctx.format = format >> i & 0x01;
                 processBlock(ctx);
@@ -50,11 +53,14 @@ namespace pboman3::io {
 
         if (ctx.format == packetFormatUncompressed) {
             char data;
-            ctx.source->read(&data, sizeof data);
+            if (ctx.source->read(&data, sizeof data) != sizeof data)
+                throw LzhDecompressionException("Compressed input is truncated");
             ctx.write(data);
         } else {
-            qint16 pointer;
-            ctx.source->read(reinterpret_cast<char*>(&pointer), sizeof pointer);
+            unsigned char bytes[sizeof(quint16)];
+            if (ctx.source->read(reinterpret_cast<char*>(bytes), sizeof bytes) != sizeof bytes)
+                throw LzhDecompressionException("Compressed input is truncated");
+            const quint16 pointer = qFromLittleEndian<quint16>(bytes);
             qint64 rpos = ctx.target->pos() - static_cast<qint64>((pointer & 0x00ff))
                 - static_cast<qint64>(((pointer & 0xf000) >> 4));
             int rlen = ((pointer & 0x0f00) >> 8) + 3;
@@ -90,8 +96,10 @@ namespace pboman3::io {
         bool valid = false;
 
         if (ctx.source->size() - ctx.source->pos() >= static_cast<qint32>(sizeof(uint))) {
-            uint crc;
-            ctx.source->read(reinterpret_cast<char*>(&crc), sizeof crc);
+            unsigned char bytes[sizeof(quint32)];
+            if (ctx.source->read(reinterpret_cast<char*>(bytes), sizeof bytes) != sizeof bytes)
+                return false;
+            const quint32 crc = qFromLittleEndian<quint32>(bytes);
             valid = crc == ctx.crc;
         }
 
@@ -112,6 +120,9 @@ namespace pboman3::io {
             }
         }
 
-        target->write(reinterpret_cast<char*>(&crc), sizeof crc);
+        unsigned char bytes[sizeof(crc)];
+        qToLittleEndian<quint32>(crc, bytes);
+        if (target->write(reinterpret_cast<const char*>(bytes), sizeof bytes) != sizeof bytes)
+            throw DiskAccessException("Could not write compression checksum.", target->fileName());
     }
 }

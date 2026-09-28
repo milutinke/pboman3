@@ -1,7 +1,8 @@
 #include "decompressioncontext.h"
+#include "lzhdecompressionexception.h"
 
 namespace pboman3::io {
-    DecompressionContext::DecompressionContext(QFileDevice* pSource, QFileDevice* pTarget)
+    DecompressionContext::DecompressionContext(QIODevice* pSource, QFileDevice* pTarget)
         : format(0),
         crc(0),
         source(pSource),
@@ -10,12 +11,14 @@ namespace pboman3::io {
     }
 
     void DecompressionContext::write(char data) {
-        target->write(&data, sizeof data);
+        if (target->write(&data, sizeof data) != sizeof data)
+            throw LzhDecompressionException("Could not write decompressed data");
         updateCrc(data);
     }
 
     void DecompressionContext::write(const QByteArray& data, int chunkSize) {
-        target->write(data.data(), chunkSize);
+        if (target->write(data.data(), chunkSize) != chunkSize)
+            throw LzhDecompressionException("Could not write decompressed data");
         updateCrc(data, chunkSize);
     }
 
@@ -23,8 +26,8 @@ namespace pboman3::io {
         const qint64 pos = target->pos();
         const bool seek = target->seek(offset);
         assert(seek);
-        target->read(buffer.data(), length);
-        target->seek(pos);
+        if (!seek || target->read(buffer.data(), length) != length || !target->seek(pos))
+            throw LzhDecompressionException("Could not read decompression history");
     }
 
     void DecompressionContext::updateCrc(char data) {

@@ -14,6 +14,7 @@
 #include "settings/getapplicationsettingsmanager.h"
 #include "util/log.h"
 #include "util/filenames.h"
+#include <QRegularExpression>
 
 #define LOG(...) LOGGER("model/task/UnpackTask", __VA_ARGS__)
 
@@ -28,7 +29,7 @@ namespace pboman3::model::task {
           fileConflictResolutionMode_(fileConflictResolutionMode) {
     }
 
-    void UnpackTask::execute(const Cancel& cancel) {
+    TaskResult UnpackTask::execute(const Cancel& cancel) {
         LOG(info, "PBO file: ", pboPath_)
         LOG(info, "Output dir: ", outputDir_.absolutePath())
         LOG(info, "Use pbo prefix: ", usePboPrefix_)
@@ -36,14 +37,21 @@ namespace pboman3::model::task {
         emit taskThinking("Preparing to extract the file: " + pboPath_);
 
         QSharedPointer<PboDocument> document;
-        if (!tryReadPboHeader(&document))
-            return;
+        QString diagnostic;
+        if (!tryReadPboHeader(&document, &diagnostic))
+            return TaskResult::failure(diagnostic);
+
+        if (cancel())
+            return TaskResult::cancelled();
 
         const QString* pboPrefix = nullptr;
+        QStringList warnings;
         if (usePboPrefix_) {
             pboPrefix = GetPrefixValueUnsanitized(*document->headers());
             if (!pboPrefix) {
-                emit taskMessage("The PBO file contains no $prefix$ header.");
+                const QString message = "The PBO file contains no $prefix$ header.";
+                warnings.append(message);
+                emit taskMessage(message);
             }
             else {
                 LOG(info, "PBO prefix: ", *pboPrefix)
@@ -51,15 +59,17 @@ namespace pboman3::model::task {
         }
 
         QDir pboDir;
-        if (!tryCreatePboDir(&pboDir, pboPrefix))
-            return;
+        if (!tryCreatePboDir(&pboDir, pboPrefix, &diagnostic))
+            return TaskResult::failure(diagnostic);
 
         constexpr qsizetype startProgress = 0;
         qint32 endProgress = 0;
         CountFilesInTree(*document->root(), endProgress);
         emit taskInitialized(pboPath_, startProgress, endProgress);
 
-        std::function onError = [this](const QString& error) {
+        QStringList errors;
+        std::function onError = [this, &errors](const QString& error) {
+            errors.append(error);
             emit taskMessage(error);
         };
 
@@ -79,16 +89,29 @@ namespace pboman3::model::task {
             childNodes.append(node);
         be.unpackSync(document->root(), childNodes, cancel);
 
-        extractPboConfig(*document, pboDir);
+        if (cancel())
+            return TaskResult::cancelled();
+
+        if (!errors.isEmpty()) {
+            TaskResult result{TaskStatus::Failure, 0, 1};
+            result.diagnostics = errors;
+            return result;
+        }
+
+        if (!extractPboConfig(*document, pboDir, &diagnostic))
+            return TaskResult::failure(diagnostic);
 
         LOG(info, "Unpack complete")
+        TaskResult result = TaskResult::success();
+        result.diagnostics = warnings;
+        return result;
     }
 
     QDebug operator<<(QDebug debug, const UnpackTask& task) {
         return debug << "UnpackTask(PboPath=" << task.pboPath_ << ", OutputDir=" << task.outputDir_ << ")";
     }
 
-    bool UnpackTask::tryReadPboHeader(QSharedPointer<PboDocument>* document) {
+    bool UnpackTask::tryReadPboHeader(QSharedPointer<PboDocument>* document, QString* diagnostic) {
         try {
             const auto settings = settings::GetApplicationSettingsManager()->readSettings();
             const DocumentReader reader = CreateDocumentReader(pboPath_, settings.junkFilterEnable);
@@ -97,16 +120,18 @@ namespace pboman3::model::task {
             return true;
         } catch (const DiskAccessException& ex) {
             LOG(warning, "Got error while opening the file:", ex)
-            emit taskMessage("Can not read the file | " + pboPath_);
+            *diagnostic = "Can not read the file | " + pboPath_;
+            emit taskMessage(*diagnostic);
             return false;
         } catch (const PboFileFormatException& ex) {
             LOG(warning, "Got error while reading the file document:", ex)
-            emit taskMessage("The file is not a PBO | " + pboPath_);
+            *diagnostic = "The file is not a PBO | " + pboPath_;
+            emit taskMessage(*diagnostic);
             return false;
         }
     }
 
-    bool UnpackTask::tryCreatePboDir(QDir* dir, const QString* pboPrefix) {
+    bool UnpackTask::tryCreatePboDir(QDir* dir, const QString* pboPrefix, QString* diagnostic) {
         QString extractPath;
         try {
             if (!tryUsePboPrefixAsPath(pboPrefix, extractPath)) {
@@ -114,14 +139,16 @@ namespace pboman3::model::task {
             }
         } catch (const PboPrefixException& ex) {
             LOG(warning, ex.message())
-            emit taskMessage(ex.windowMessage());
+            *diagnostic = ex.windowMessage();
+            emit taskMessage(*diagnostic);
             return false;
         }
 
         QString absPath = outputDir_.absoluteFilePath(extractPath);
         if (!outputDir_.exists(extractPath) && !outputDir_.mkpath(extractPath)) {
             LOG(warning, "Could not create the directory:", absPath)
-            emit taskMessage("Could not create the directory | " + absPath);
+            *diagnostic = "Could not create the directory | " + absPath;
+            emit taskMessage(*diagnostic);
             return false;
         }
 
@@ -149,16 +176,19 @@ namespace pboman3::model::task {
         return true;
     }
 
-    void UnpackTask::extractPboConfig(const PboDocument& document, const QDir& dir) {
+    bool UnpackTask::extractPboConfig(const PboDocument& document, const QDir& dir, QString* diagnostic) {
         const PboJson options = PboJsonHelper::extractFrom(document);
         LOG(info, "Extracted the PBO pack config, Options=", options)
         try {
             const QString configFilePath = PboJsonHelper::getConfigFilePath(dir, fileConflictResolutionMode_);
             PboJsonHelper::saveTo(options, configFilePath);
+            return true;
         } catch (const DiskAccessException& ex) {
             LOG(info, ex.message())
             //remove the "." symbol from the end
-            emit taskMessage(ex.message().left(ex.message().length() - 1) + " | " + ex.file());
+            *diagnostic = ex.message().left(ex.message().length() - 1) + " | " + ex.file();
+            emit taskMessage(*diagnostic);
+            return false;
         }
     }
 
@@ -167,21 +197,30 @@ namespace pboman3::model::task {
             return false;
         }
 
-        if (!QDir::isRelativePath(*pboPrefix)) {
+        const QString raw = *pboPrefix;
+        static const QRegularExpression drivePath("^[A-Za-z]:");
+        if (raw.startsWith('/') || raw.startsWith('\\') || drivePath.match(raw).hasMatch()) {
             throw PboPrefixException("PBO prefix must be a relative path:" + *pboPrefix,
                                      "PBO prefix must be a relative path | " + *pboPrefix);
         }
 
-        const QString pboPrefixClean = QDir::cleanPath(*pboPrefix);
-        if (pboPrefixClean.isEmpty())
-            return false;
-
-        if (pboPrefixClean.startsWith("..\\") || pboPrefixClean.startsWith("../") || pboPrefixClean == "..") {
-            throw PboPrefixException("The directory must not leave the unpack folder:" + *pboPrefix,
-                                     "The directory must not leave the unpack folder | " + *pboPrefix);
+        const QStringList rawSegments = raw.split(QRegularExpression("[\\\\/]"), Qt::SkipEmptyParts);
+        QStringList safeSegments;
+        safeSegments.reserve(rawSegments.size());
+        for (const QString& segment : rawSegments) {
+            if (segment == ".")
+                continue;
+            if (segment == "..") {
+                throw PboPrefixException("The directory must not leave the unpack folder:" + *pboPrefix,
+                                         "The directory must not leave the unpack folder | " + *pboPrefix);
+            }
+            safeSegments.append(segment);
         }
 
-        SanitizedPath sp(pboPrefixClean);
+        if (safeSegments.isEmpty())
+            return false;
+
+        SanitizedPath sp(safeSegments.join('/'));
         result = sp;
         return true;
     }

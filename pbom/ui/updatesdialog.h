@@ -3,6 +3,7 @@
 #include <QDialog>
 #include <QNetworkReply>
 #include <QNetworkAccessManager>
+#include <QUrl>
 
 namespace Ui {
     class UpdatesDialog;
@@ -35,7 +36,8 @@ namespace pboman3::ui {
         Q_OBJECT
 
     public:
-        GithubLatestVersion() = default;
+        explicit GithubLatestVersion(
+            QUrl releasesUrl = QUrl(PBOM_API_SITE "/releases?per-page=1"));
 
         void check();
 
@@ -49,6 +51,7 @@ namespace pboman3::ui {
     private:
         QNetworkAccessManager network_;
         QScopedPointer<QNetworkReply, QScopedPointerDeleteLater> reply_;
+        QUrl releasesUrl_;
 
         void replyReceived();
     };

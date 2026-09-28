@@ -15,7 +15,7 @@ namespace pboman3::model::task {
         UnpackTask(QString pboPath, const QString& outputDir, const bool usePboPrefix,
                    FileConflictResolutionMode::Enum fileConflictResolutionMode);
 
-        void execute(const Cancel& cancel) override;
+        [[nodiscard]] TaskResult execute(const Cancel& cancel) override;
 
         friend QDebug operator <<(QDebug debug, const UnpackTask& task);
 
@@ -25,13 +25,13 @@ namespace pboman3::model::task {
         bool usePboPrefix_;
         FileConflictResolutionMode::Enum fileConflictResolutionMode_;
 
-        bool tryReadPboHeader(QSharedPointer<PboDocument>* document);
+        bool tryReadPboHeader(QSharedPointer<PboDocument>* document, QString* diagnostic);
 
-        bool tryCreatePboDir(QDir* dir, const QString* pboPrefix);
+        bool tryCreatePboDir(QDir* dir, const QString* pboPrefix, QString* diagnostic);
 
         bool tryCreateEntryDir(const QDir& pboDir, const QSharedPointer<PboNode>& entry);
 
-        void extractPboConfig(const PboDocument& document, const QDir& dir);
+        bool extractPboConfig(const PboDocument& document, const QDir& dir, QString* diagnostic);
 
         static bool tryUsePboPrefixAsPath(const QString* pboPrefix, QString& result);
 

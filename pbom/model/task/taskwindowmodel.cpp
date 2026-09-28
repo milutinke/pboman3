@@ -70,7 +70,7 @@ namespace pboman3::model::task {
             });
 
             try {
-                task->execute(cancel);
+                static_cast<void>(task->execute(cancel));
             } catch (const AppException& ex) {
                 LOG(warning, "Task", task, "failed with exception:", ex)
                 emit model_->threadMessage(threadId_, ex.message());

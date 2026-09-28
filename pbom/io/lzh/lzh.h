@@ -8,7 +8,7 @@ namespace pboman3::io {
 
     class Lzh {
     public:
-        static void decompress(QFileDevice* source, QFileDevice* target, int outputLength, const Cancel& cancel);
+        static void decompress(QIODevice* source, QFileDevice* target, int outputLength, const Cancel& cancel);
 
         static void compress(QFileDevice* source, QFileDevice* target, const Cancel& cancel);
 

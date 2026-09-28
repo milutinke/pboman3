@@ -15,7 +15,7 @@ namespace pboman3::io::test {
         p.open(QIODeviceBase::WriteOnly);
         const PboHeaderIO io(&p);
         const PboNodeEntity e1("f1", PboPackingMethod::Packed, 0x01010101, 0x02020202,
-                          0x03030303, 0x04040404);
+                          0x03030303, 0);
         const PboNodeEntity e2 = PboNodeEntity::makeBoundary();
 
         io.writeEntry(e1);
@@ -38,7 +38,7 @@ namespace pboman3::io::test {
         ASSERT_EQ(header.entries.at(0)->originalSize(), 0x01010101);
         ASSERT_EQ(header.entries.at(0)->reserved(), 0x02020202);
         ASSERT_EQ(header.entries.at(0)->timestamp(), 0x03030303);
-        ASSERT_EQ(header.entries.at(0)->dataSize(), 0x04040404);
+        ASSERT_EQ(header.entries.at(0)->dataSize(), 0);
 
         ASSERT_EQ(header.dataBlockStart, 44);
 
@@ -268,5 +268,21 @@ namespace pboman3::io::test {
         r.open(QIODeviceBase::ReadOnly);
         ASSERT_THROW(PboHeaderReader::readFileHeader(&r), PboFileFormatException);
         r.close();
+    }
+
+    TEST(PboHeaderReaderTest, ReadFileHeader_Throws_If_Data_Block_Is_Truncated) {
+        QTemporaryFile t;
+        ASSERT_TRUE(t.open());
+
+        PboFile p(t.fileName());
+        ASSERT_TRUE(p.open(QIODeviceBase::WriteOnly));
+        const PboHeaderIO io(&p);
+        io.writeEntry(PboNodeEntity("f1", PboPackingMethod::Uncompressed, 16, 0, 0, 16));
+        io.writeEntry(PboNodeEntity::makeBoundary());
+        ASSERT_EQ(p.write(QByteArray(4, 'x')), 4);
+        p.close();
+
+        ASSERT_TRUE(p.open(QIODeviceBase::ReadOnly));
+        ASSERT_THROW(PboHeaderReader::readFileHeader(&p), PboFileFormatException);
     }
 }

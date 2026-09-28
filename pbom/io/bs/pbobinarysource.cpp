@@ -2,6 +2,7 @@
 #include "io/diskaccessexception.h"
 #include "io/lzh/lzh.h"
 #include "io/lzh/lzhdecompressionexception.h"
+#include <QBuffer>
 
 namespace pboman3::io {
     PboBinarySource::PboBinarySource(const QString& path, const PboDataInfo& dataInfo, qsizetype bufferSize)
@@ -37,16 +38,24 @@ namespace pboman3::io {
             const qint64 hasRead = file_->read(buf.data(), willRead);
             if (hasRead <= 0)
                 throw DiskAccessException("For some reason could not read from the file.", file_->fileName());
-            targetFile->write(buf.data(), hasRead);
+            if (targetFile->write(buf.data(), hasRead) != hasRead)
+                throw DiskAccessException("Could not write all data to the destination file.", targetFile->fileName());
             remaining -= hasRead;
         }
     }
 
     bool PboBinarySource::tryWriteDecompressed(QFileDevice* targetFile, const Cancel& cancel) const {
         try {
-            const bool seek = file_->seek(dataInfo_.dataOffset);
-            assert(seek);
-            Lzh::decompress(file_, targetFile, dataInfo_.originalSize, cancel);
+            if (!file_->seek(dataInfo_.dataOffset))
+                throw DiskAccessException("Could not seek to the compressed file entry.", file_->fileName());
+
+            QByteArray compressed(dataInfo_.dataSize, Qt::Initialization::Uninitialized);
+            if (file_->read(compressed.data(), compressed.size()) != compressed.size())
+                throw DiskAccessException("The compressed file entry is truncated.", file_->fileName());
+
+            QBuffer boundedSource(&compressed);
+            boundedSource.open(QIODeviceBase::ReadOnly);
+            Lzh::decompress(&boundedSource, targetFile, dataInfo_.originalSize, cancel);
             return true;
         } catch (LzhDecompressionException&) {
             targetFile->resize(0);

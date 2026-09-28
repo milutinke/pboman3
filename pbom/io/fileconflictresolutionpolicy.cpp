@@ -35,6 +35,10 @@ namespace pboman3::io {
         return filePath;
     }
 
+    FileConflictResolutionMode::Enum FileConflictResolutionPolicy::mode() const {
+        return conflictResolutionMode_;
+    }
+
     QString FileConflictResolutionPolicy::getCopyFileName(const QString& fileName) {
         for (int i = 1; i < std::numeric_limits<int>::max(); i++) {
             auto copyName = util::FileNames::getCopyFileName(fileName, i);

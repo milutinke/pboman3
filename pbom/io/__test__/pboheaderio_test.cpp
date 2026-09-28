@@ -2,6 +2,7 @@
 #include <QByteArray>
 #include <QSharedPointer>
 #include <QTemporaryFile>
+#include <QtEndian>
 #include <gtest/gtest.h>
 
 namespace pboman3::io::test {
@@ -91,32 +92,24 @@ namespace pboman3::io::test {
         
         const QByteArray all = t.readAll();
 
-        const PboPackingMethod pmE1 = e1.packingMethod();
-        const qint32 osE1 = e1.originalSize();
-        const qint32 rsE1 = e1.reserved();
-        const qint32 tsE1 = e1.timestamp();
-        const qint32 dsE1 = e1.dataSize();
-
         QByteArray expected;
+        const auto appendLe32 = [&expected](const quint32 value) {
+            const quint32 littleEndian = qToLittleEndian(value);
+            expected.append(reinterpret_cast<const char*>(&littleEndian), sizeof littleEndian);
+        };
         expected.append(e1.fileName().toUtf8()).append(1, 0);
-        expected.append(reinterpret_cast<const char*>(&pmE1), sizeof pmE1);
-        expected.append(reinterpret_cast<const char*>(&osE1), sizeof osE1);
-        expected.append(reinterpret_cast<const char*>(&rsE1), sizeof rsE1);
-        expected.append(reinterpret_cast<const char*>(&tsE1), sizeof tsE1);
-        expected.append(reinterpret_cast<const char*>(&dsE1), sizeof dsE1);
-
-        const PboPackingMethod pmE2 = e2.packingMethod();
-        const qint32 osE2 = e2.originalSize();
-        const qint32 rsE2 = e2.reserved();
-        const qint32 tsE2 = e2.timestamp();
-        const qint32 dsE2 = e2.dataSize();
+        appendLe32(static_cast<quint32>(e1.packingMethod()));
+        appendLe32(e1.originalSize());
+        appendLe32(e1.reserved());
+        appendLe32(e1.timestamp());
+        appendLe32(e1.dataSize());
 
         expected.append(e2.fileName().toUtf8()).append(1, 0);
-        expected.append(reinterpret_cast<const char*>(&pmE2), sizeof pmE2);
-        expected.append(reinterpret_cast<const char*>(&osE2), sizeof osE2);
-        expected.append(reinterpret_cast<const char*>(&rsE2), sizeof rsE2);
-        expected.append(reinterpret_cast<const char*>(&tsE2), sizeof tsE2);
-        expected.append(reinterpret_cast<const char*>(&dsE2), sizeof dsE2);
+        appendLe32(static_cast<quint32>(e2.packingMethod()));
+        appendLe32(e2.originalSize());
+        appendLe32(e2.reserved());
+        appendLe32(e2.timestamp());
+        appendLe32(e2.dataSize());
 
         ASSERT_EQ(expected.compare(all), 0);
     }
