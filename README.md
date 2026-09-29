@@ -114,6 +114,32 @@ Also, see [how CI builds](.github/workflows/artifcats.yaml).
 
 On Linux, a typical source build is:
 
+### Arch Linux package
+
+Arch Linux users can build and install a native pacman package from the
+included AUR-ready recipe:
+
+```sh
+sudo pacman -S --needed base-devel
+git clone https://github.com/milutinke/pboman3.git
+cd pboman3/packaging/arch
+makepkg -si
+```
+
+The package owns the GUI, CLI, desktop entry, PBO MIME definition, icon, and
+the integration files for both Dolphin and GNOME Files. File managers remain
+optional dependencies so installing PBO Manager does not install two desktop
+stacks. Install the integration for the file manager you use:
+
+```sh
+sudo pacman -S --needed dolphin          # KDE Dolphin context menus
+sudo pacman -S --needed nautilus-python  # GNOME Files context menus
+```
+
+Close and reopen Dolphin after installation. Restart Nautilus so it reloads
+the Python extension. See [the Arch packaging notes](packaging/arch/README.md)
+for package removal and future AUR maintenance.
+
 ### Linux build and install script
 
 Install the required build tools, a C++20 compiler, Qt 6.8 or newer, and the Qt
