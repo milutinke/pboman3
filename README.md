@@ -122,7 +122,7 @@ included AUR-ready recipe:
 ```sh
 sudo pacman -S --needed base-devel
 git clone https://github.com/milutinke/pboman3.git
-cd pboman3/packaging/arch
+cd pboman3/packaging/arch/pboman3
 makepkg -si
 ```
 
@@ -139,6 +139,10 @@ sudo pacman -S --needed nautilus-python  # GNOME Files context menus
 Close and reopen Dolphin after installation. Restart Nautilus so it reloads
 the Python extension. See [the Arch packaging notes](packaging/arch/README.md)
 for package removal and future AUR maintenance.
+
+Alternative recipes are available in `packaging/arch/pboman3-bin` for the
+prebuilt AppImage and `packaging/arch/pboman3-git` for current development
+builds.
 
 ### Linux build and install script
 
