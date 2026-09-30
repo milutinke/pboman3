@@ -2,8 +2,10 @@ name: Linux
 
 permissions:
   contents: write
+  issues: write
 
 on:
+  workflow_dispatch:
   push:
     branches-ignore:
       - main
@@ -65,6 +67,20 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set package version
+        shell: bash
+        run: |
+          version=1.11.0
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version=${GITHUB_REF_NAME#v}
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "Release tags must use vMAJOR.MINOR.PATCH format: $GITHUB_REF_NAME" >&2
+              exit 2
+            }
+          fi
+          echo "PBOM_VERSION=$version" >> "$GITHUB_ENV"
+          echo "PBOM_BUILD_NUMBER=${GITHUB_RUN_NUMBER} (${GITHUB_SHA:0:7})" >> "$GITHUB_ENV"
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -74,7 +90,13 @@ jobs:
           arch: linux_gcc_64
 
       - name: Configure release
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX=/usr
+          -DBUILD_TESTING=OFF
+          -DPBOM_VERSION:STRING="${PBOM_VERSION}"
+          -DPBOM_BUILD_NUMBER:STRING="${PBOM_BUILD_NUMBER}"
 
       - name: Build release
         run: cmake --build build
@@ -110,11 +132,57 @@ jobs:
             dist/abi-symbols.txt
 
       - name: Publish AppImage to GitHub Release
+        id: publish_release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{github.ref_name}}
+          name: ${{github.ref_name}}
           generate_release_notes: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
           files: |
             dist/PBOManager-x86_64.AppImage
             dist/PBOManager-x86_64.AppDir.tar.gz
             dist/SHA256SUMS
+
+      - name: Report Linux release publication failure
+        if: startsWith(github.ref, 'refs/tags/v') && steps.publish_release.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const title = `Release publication failed: ${tag} (Linux)`;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `The Linux release job could not publish or replace the assets for **${tag}**.`,
+              '',
+              `Workflow run: ${runUrl}`,
+              `Commit: ${context.sha}`,
+              '',
+              'The AppImage, AppDir tarball, or checksum file may be missing or stale. Re-run the failed workflow after resolving the upload error.'
+            ].join('\n');
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = openIssues.find(issue => !issue.pull_request && issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }
+            core.setFailed(`Release publication failed; tracking issue: ${title}`);

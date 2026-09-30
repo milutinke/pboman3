@@ -1,5 +1,12 @@
 # PBO Manager change log
 
+# Version 1.11.0
+- Added native Linux GUI and CLI builds.
+- Added GNOME Files and KDE Dolphin context-menu integration.
+- Added AppImage, AppDir, and Arch Linux packaging.
+- Added cross-platform filesystem safety and archive compatibility fixes.
+- Added tagged GitHub Release publishing for Linux and Windows packages.
+
 # Version 1.10.0
 - The application can extract PBO contents to the prefix folder
 - Dark theme
