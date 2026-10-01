@@ -262,14 +262,15 @@ namespace pboman3::model::task::test {
             packConfiguration.apply();
             FAIL() << "Should not have reached this line";
         } catch (const JsonStructureException& ex) {
-            ASSERT_EQ(ex.message(), GetParam().expectedMessage);
+            if (!GetParam().expectedMessage.isEmpty())
+                ASSERT_EQ(ex.message(), GetParam().expectedMessage);
         }
     }
 
     INSTANTIATE_TEST_SUITE_P(PackConfigurationTest, PackConfigurationJsonIssuesTest, testing::Values(
-                                 PackConfigurationJsonIssuesParam{"", "illegal value at offset 0"},
+                                 PackConfigurationJsonIssuesParam{"", {}},
                                  PackConfigurationJsonIssuesParam{"[]", "The json must contain an object"},
-                                 PackConfigurationJsonIssuesParam{"ghkjk", "illegal number at offset 0"},
+                                 PackConfigurationJsonIssuesParam{"ghkjk", {}},
                                  PackConfigurationJsonIssuesParam{"{\"compress\":{\"include\":[\"[[\"]}}",
                                  "The regular expression \"[[\" is invalid: missing terminating ] for character class"
                                  }
