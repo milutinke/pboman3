@@ -10,7 +10,6 @@ set(PBOM_VERSION "0.0.1" CACHE STRING "App release version")
 
 option(PBOM_BUILD_GUI "Build the PBO Manager desktop application" ON)
 option(PBOM_BUILD_CLI "Build the PBO Manager command-line application" ON)
-option(PBOM_USE_SYSTEM_CLI11 "Use an installed CLI11 package" OFF)
 
 set(_PBOM_EXPLORER_DEFAULT OFF)
 if(WIN32)
@@ -32,31 +31,11 @@ add_compile_definitions(
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-
 if(MSVC)
     add_compile_options(/Zc:preprocessor)
 endif()
 
-if(PBOM_USE_SYSTEM_CLI11)
-    find_package(CLI11 CONFIG REQUIRED)
-    set(PBOM_CLI11_TARGET CLI11::CLI11)
-else()
-    add_subdirectory(__lib__/cli11 EXCLUDE_FROM_ALL)
-    set(PBOM_CLI11_TARGET CLI11)
-endif()
-
-set(PBOM_QT_COMPONENTS Core)
-if(PBOM_BUILD_GUI OR BUILD_TESTING)
-    list(APPEND PBOM_QT_COMPONENTS Concurrent Network Widgets)
-endif()
-if(BUILD_TESTING)
-    list(APPEND PBOM_QT_COMPONENTS Test)
-endif()
-
-find_package(Qt6 6.8 REQUIRED COMPONENTS ${PBOM_QT_COMPONENTS})
+add_subdirectory(__lib__/cli11 EXCLUDE_FROM_ALL)
 
 if(BUILD_TESTING)
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)

@@ -1,5 +1,9 @@
 #include "errordialog.h"
 
+#ifdef Q_OS_WIN
+#include "win32/win32fileviewer.h"
+#endif
+
 namespace pboman3::ui {
     ErrorDialog::ErrorDialog(const DiskAccessException& ex, QWidget* parent)
         : QDialog(parent),
@@ -26,15 +30,15 @@ namespace pboman3::ui {
         : QDialog(parent),
           ui_(new Ui::ErrorDialog) {
         ui_->setupUi(this);
-        ui_->label->setTextFormat(Qt::RichText);
+        ui_->label->setTextFormat(Qt::PlainText);
         QString message = ex.message();
 #ifdef Q_OS_WIN
         if (const auto* windowsError = dynamic_cast<const Win32FileViewerException*>(&ex)) {
-            message += "<br><br>Error code: " + QString::number(windowsError->systemErrorCode())
-                + "<br>Error text: " + windowsError->systemErrorDescription();
+            message += "\n\nError code: " + QString::number(windowsError->systemErrorCode())
+                + "\nError text: " + windowsError->systemErrorDescription();
         }
 #endif
-        ui_->label->setText(message + "<br><br>" + ex.filePath().toHtmlEscaped());
+        ui_->label->setText(message + "\n\n" + ex.filePath());
     }
 
 

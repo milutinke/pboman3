@@ -3,12 +3,18 @@
   stdenv,
   cmake,
   ninja,
-  cli11,
+  fetchurl,
   qt6,
   xdg-utils,
   src ? ../..,
 }:
 
+let
+  cli11Source = fetchurl {
+    url = "https://codeload.github.com/CLIUtils/CLI11/tar.gz/bfffd37e1f804ca4fae1caae106935791696b6a9";
+    sha256 = "03c9b7921b8f99ca39ae660b03ebf9bd5a3f4280201f7d04bc5639b1e0496401";
+  };
+in
 stdenv.mkDerivation (finalAttrs: {
   pname = "pboman3";
   version = "1.11.0";
@@ -24,7 +30,6 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    cli11
     qt6.qtbase
     qt6.qtwayland
   ];
@@ -33,9 +38,14 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.cmakeBool "BUILD_TESTING" false)
     (lib.cmakeBool "PBOM_BUILD_GUI" true)
     (lib.cmakeBool "PBOM_BUILD_CLI" true)
-    (lib.cmakeBool "PBOM_USE_SYSTEM_CLI11" true)
     (lib.cmakeFeature "PBOM_VERSION" finalAttrs.version)
   ];
+
+  # Git flake sources omit submodules. Supply the exact revision pinned by the repository.
+  postPatch = ''
+    mkdir -p __lib__/cli11
+    tar -xzf ${cli11Source} -C __lib__/cli11 --strip-components=1
+  '';
 
   postInstall = ''
     install -Dm644 LICENSE "$out/share/licenses/pboman3/LICENSE"

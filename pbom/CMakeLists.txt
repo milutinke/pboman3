@@ -1,4 +1,21 @@
-set(WIN32_VER 0x0A00)
+cmake_policy(SET CMP0074 NEW)
+
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+set(WIN32_VER 0x0A00) #https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt?view=msvc-160
+
+set(CMAKE_FIND_DEBUG_MODE FALSE)
+set(PBOM_QT_COMPONENTS Core)
+if(PBOM_BUILD_GUI OR BUILD_TESTING)
+    list(APPEND PBOM_QT_COMPONENTS Concurrent Network Widgets)
+endif()
+if(BUILD_TESTING)
+    list(APPEND PBOM_QT_COMPONENTS Test)
+endif()
+
+find_package(Qt6 6.8 REQUIRED COMPONENTS ${PBOM_QT_COMPONENTS})
 
 add_subdirectory(domain)
 add_subdirectory(io)
@@ -36,7 +53,7 @@ if(PBOM_BUILD_GUI)
 
     qt_add_executable(pbom ${PBOM_GUI_SOURCES})
     target_include_directories(pbom PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    target_link_libraries(pbom PRIVATE pbom_ui ${PBOM_CLI11_TARGET})
+    target_link_libraries(pbom PRIVATE pbom_ui CLI11)
     target_compile_definitions(pbom PRIVATE WINVER=${WIN32_VER} NOMINMAX PBOM_GUI)
     set_target_properties(pbom PROPERTIES WIN32_EXECUTABLE "$<CONFIG:Release>")
 
@@ -51,7 +68,7 @@ if(PBOM_BUILD_CLI)
 
     add_executable(pboc ${PBOM_CLI_SOURCES})
     target_include_directories(pboc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    target_link_libraries(pboc PRIVATE pbom_core ${PBOM_CLI11_TARGET})
+    target_link_libraries(pboc PRIVATE pbom_core CLI11)
     target_compile_definitions(pboc PRIVATE NOMINMAX)
 
     install(TARGETS pboc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -99,7 +116,7 @@ if(BUILD_TESTING)
     add_executable(pbom_test ${PBOM_TEST_SOURCES})
     target_include_directories(pbom_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(pbom_test
-        PRIVATE pbom_ui Qt6::Test ${PBOM_CLI11_TARGET} gtest gmock)
+        PRIVATE pbom_ui Qt6::Test CLI11 gtest gmock)
     target_compile_definitions(pbom_test PRIVATE
         SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         WINVER=${WIN32_VER}

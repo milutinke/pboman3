@@ -6,10 +6,6 @@
 #include "exception.h"
 #include "fileviewer.h"
 
-#ifdef WIN32
-#include "win32/win32fileviewer.h"
-#endif
-
 namespace Ui {
     class ErrorDialog;
 }
