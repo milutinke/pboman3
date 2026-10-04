@@ -51,20 +51,20 @@ The [Windows 10](#windows-10) installation instructions are still valid for Wind
 
 ## Linux
 
-Linux builds require Qt 6.8 or newer. Build and install the GUI, CLI, desktop
-entry, MIME type, Dolphin service menus and Nautilus extension for the current
-user with:
+Download the Linux AppImage from [Releases](https://github.com/winseros/pboman3/releases).
+Make it executable, then run it or register desktop integration for the current
+user:
 
 ```sh
-git clone --recurse-submodules https://github.com/winseros/pboman3.git
-cd pboman3
-./linux/build-install.sh
+chmod +x PBOManager-x86_64.AppImage
+./PBOManager-x86_64.AppImage
+./PBOManager-x86_64.AppImage --install-integration
 ```
 
 GNOME Files requires `nautilus-python`. Restart GNOME Files or Dolphin after
-installation. Use `./linux/uninstall-user.sh` to remove the per-user desktop
-integration. See [the Linux integration notes](linux/README.md) for manual and
-portable installation.
+installation. Use the AppImage's `--uninstall-integration` option to remove the
+per-user desktop integration. See [the Linux integration notes](linux/README.md)
+for manual and portable installation.
 
 The repository also contains three local Arch package recipes:
 
@@ -101,11 +101,12 @@ exports `nixosModules.default`, with optional Nautilus integration through
 
 Also, see [how CI builds](.github/workflows/artifcats.yaml).
 
-On Linux, a normal CMake build is:
+Linux source builds require Qt 6.8 or newer. Build and install with CMake:
 
 ```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"
 cmake --build build
+cmake --install build
 ```
 
 The Linux CI workflow builds and tests with GCC and Clang and produces an
