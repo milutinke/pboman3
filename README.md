@@ -101,7 +101,7 @@ exports `nixosModules.default`, with optional Nautilus integration through
 
 Also, see [how CI builds](.github/workflows/artifcats.yaml).
 
-Linux source builds require Qt 6.8 or newer. Build and install with CMake:
+Linux source builds require Qt 6. Build and install with CMake:
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"

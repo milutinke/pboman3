@@ -6,7 +6,8 @@ include(CTest)
 include(GNUInstallDirs)
 
 set(PBOM_BUILD_NUMBER "build \(ver\)" CACHE STRING "App build number")
-set(PBOM_VERSION "0.0.1" CACHE STRING "App release version")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PBOM_DEFAULT_VERSION LIMIT_COUNT 1)
+set(PBOM_VERSION "${PBOM_DEFAULT_VERSION}" CACHE STRING "App release version")
 
 option(PBOM_BUILD_GUI "Build the PBO Manager desktop application" ON)
 option(PBOM_BUILD_CLI "Build the PBO Manager command-line application" ON)

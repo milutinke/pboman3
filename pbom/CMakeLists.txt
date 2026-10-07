@@ -15,7 +15,7 @@ if(BUILD_TESTING)
     list(APPEND PBOM_QT_COMPONENTS Test)
 endif()
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS ${PBOM_QT_COMPONENTS})
+find_package(Qt6 REQUIRED COMPONENTS ${PBOM_QT_COMPONENTS})
 
 add_subdirectory(domain)
 add_subdirectory(io)

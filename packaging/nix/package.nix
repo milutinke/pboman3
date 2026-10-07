@@ -17,7 +17,7 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "pboman3";
-  version = "1.11.0";
+  version = lib.strings.trim (builtins.readFile (src + "/VERSION"));
 
   inherit src;
 
